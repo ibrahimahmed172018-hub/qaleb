@@ -37,6 +37,15 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
+  // If request contains an auth code but didn't land on /auth/callback (e.g. Supabase defaulted to Site URL /),
+  // automatically forward it to /auth/callback so the session is exchanged and cookies are set
+  const code = request.nextUrl.searchParams.get("code");
+  if (code && pathname !== "/auth/callback") {
+    const callbackUrl = request.nextUrl.clone();
+    callbackUrl.pathname = "/auth/callback";
+    return NextResponse.redirect(callbackUrl);
+  }
+
   // Protect /admin and any sub-routes
   if (pathname.startsWith("/admin") && !user) {
     const url = request.nextUrl.clone();

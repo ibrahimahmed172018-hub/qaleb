@@ -9,9 +9,13 @@ export async function GET(request: NextRequest) {
 
   const forwardedHost = request.headers.get("x-forwarded-host");
   const forwardedProto = request.headers.get("x-forwarded-proto") || "https";
-  const baseOrigin =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (forwardedHost ? `${forwardedProto}://${forwardedHost}` : origin);
+  const host = forwardedHost || request.headers.get("host") || "";
+  const isLocalhost = host.includes("localhost") || host.includes("127.0.0.1");
+
+  const baseOrigin = isLocalhost
+    ? origin
+    : process.env.NEXT_PUBLIC_SITE_URL ||
+      (forwardedHost ? `${forwardedProto}://${forwardedHost}` : "https://qaleb.site");
 
   if (code) {
     const redirectUrl = new URL(next, baseOrigin);

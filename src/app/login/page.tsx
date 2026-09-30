@@ -53,16 +53,23 @@ function LoginContent() {
       return;
     }
 
-    // Validate email against process.env.ADMIN_EMAIL
-    const configuredAdminEmail = (process.env.ADMIN_EMAIL || "").trim().toLowerCase();
-    if (configuredAdminEmail && cleanEmail !== configuredAdminEmail) {
+    // Validate email against authorized admin emails
+    const allowedAdmins = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "qalebsolutions@gmail.com,ibrahimahmed172018@gmail.com")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+
+    if (allowedAdmins.length > 0 && !allowedAdmins.includes(cleanEmail)) {
       setErrorMessage("عذراً، هذا البريد الإلكتروني غير مصرح له بالدخول إلى لوحة التحكم.");
       return;
     }
 
     startTransition(async () => {
       try {
-        const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || "https://qaleb.site";
+        const siteOrigin =
+          typeof window !== "undefined" && window.location.origin
+            ? window.location.origin
+            : process.env.NEXT_PUBLIC_SITE_URL || "https://qaleb.site";
         const redirectUrl = `${siteOrigin}/auth/callback`;
         const { error } = await supabase.auth.signInWithOtp({
           email: cleanEmail,

@@ -26,8 +26,12 @@ async function ensureAdmin() {
     throw new Error("غير مصرح: يجب تسجيل الدخول كمسؤول أولاً.");
   }
 
-  const configuredAdminEmail = (process.env.ADMIN_EMAIL || "").trim().toLowerCase();
-  if (configuredAdminEmail && user.email?.trim().toLowerCase() !== configuredAdminEmail) {
+  const allowedAdmins = (process.env.ADMIN_EMAIL || "qalebsolutions@gmail.com,ibrahimahmed172018@gmail.com")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (allowedAdmins.length > 0 && !allowedAdmins.includes(user.email?.trim().toLowerCase() || "")) {
     throw new Error("غير مصرح: هذا الحساب غير مصرح له بتنفيذ عمليات الإدارة.");
   }
 
