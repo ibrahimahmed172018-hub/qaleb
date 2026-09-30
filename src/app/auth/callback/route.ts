@@ -2,9 +2,13 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import type { Database } from "@/types/database.types";
 
+import type { EmailOtpType } from "@supabase/supabase-js";
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
+  const token_hash = searchParams.get("token_hash");
+  const type = (searchParams.get("type") as EmailOtpType) || "magiclink";
   const next = searchParams.get("next") ?? "/admin";
 
   const forwardedHost = request.headers.get("x-forwarded-host");
@@ -17,7 +21,7 @@ export async function GET(request: NextRequest) {
     : process.env.NEXT_PUBLIC_SITE_URL ||
       (forwardedHost ? `${forwardedProto}://${forwardedHost}` : "https://qaleb.site");
 
-  if (code) {
+  if (code || token_hash) {
     const redirectUrl = new URL(next, baseOrigin);
     const response = NextResponse.redirect(redirectUrl);
 
@@ -38,9 +42,19 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
-      return response;
+    if (code) {
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (!error) {
+        return response;
+      }
+    } else if (token_hash) {
+      const { error } = await supabase.auth.verifyOtp({
+        type,
+        token_hash,
+      });
+      if (!error) {
+        return response;
+      }
     }
   }
 
