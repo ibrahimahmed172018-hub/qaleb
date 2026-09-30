@@ -62,7 +62,8 @@ function LoginContent() {
 
     startTransition(async () => {
       try {
-        const redirectUrl = `${window.location.origin}/auth/callback`;
+        const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || "https://qaleb.site";
+        const redirectUrl = `${siteOrigin}/auth/callback`;
         const { error } = await supabase.auth.signInWithOtp({
           email: cleanEmail,
           options: {
