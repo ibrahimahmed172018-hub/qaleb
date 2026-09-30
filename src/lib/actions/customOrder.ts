@@ -1,6 +1,14 @@
 "use server";
 
+import dns from "node:dns";
 import nodemailer from "nodemailer";
+
+// Ensure IPv4 is prioritized on dual-stack environments to prevent IPv6 network delays
+try {
+  dns.setDefaultResultOrder("ipv4first");
+} catch {
+  // Ignore in environments where not supported
+}
 
 export interface CustomOrderPayload {
   clientName: string;
@@ -16,6 +24,49 @@ export interface CustomOrderResponse {
   success: boolean;
   error?: string;
   simulated?: boolean;
+}
+
+interface ResendPayload {
+  from: string;
+  to: string[];
+  subject: string;
+  html: string;
+  reply_to?: string;
+}
+
+/**
+ * Send an email directly via the official Resend REST API using native fetch.
+ */
+async function sendWithResend(
+  apiKey: string,
+  payload: ResendPayload
+): Promise<{ ok: boolean; id?: string; error?: string }> {
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey.trim()}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      return {
+        ok: false,
+        error: data?.message || `خطأ من مزود البريد Resend (${res.status})`,
+      };
+    }
+
+    return { ok: true, id: data?.id };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "فشل الاتصال بخدمة Resend",
+    };
+  }
 }
 
 export async function submitCustomOrder(
@@ -43,10 +94,8 @@ export async function submitCustomOrder(
       return { success: false, error: "يرجى كتابة تفاصيل ومواصفات المشروع المطلوب." };
     }
 
-    const recipient =
-      process.env.NOTIFICATION_RECEIVER_EMAIL ||
-      process.env.ADMIN_EMAIL ||
-      "ibrahimahmed172018@gmail.com";
+    const adminOwnerEmail = (process.env.ADMIN_EMAIL || "ibrahimahmed172018@gmail.com").trim();
+    const recipient = (process.env.NOTIFICATION_RECEIVER_EMAIL || adminOwnerEmail).trim();
 
     const cleanPhone = phone.replace(/[^0-9]/g, "");
     const waLink = `https://wa.me/${cleanPhone}`;
@@ -145,46 +194,90 @@ export async function submitCustomOrder(
 </html>
 `;
 
-    // 3. SMTP Transporter Setup
-    const host = process.env.SMTP_HOST || "smtp.gmail.com";
+    // 3. Primary Delivery: Resend API
+    const resendApiKey = process.env.RESEND_API_KEY?.trim();
+    if (resendApiKey) {
+      const fromEmail = process.env.RESEND_FROM_EMAIL?.trim() || "QALEB <onboarding@resend.dev>";
+      const emailSubject = `🔥 طلب مشروع مخصص جديد من: ${clientName}`;
+      const replyTo = email !== "غير محدد" ? email : undefined;
+
+      const resendResult = await sendWithResend(resendApiKey, {
+        from: fromEmail,
+        to: [recipient],
+        subject: emailSubject,
+        html: htmlContent,
+        reply_to: replyTo,
+      });
+
+      if (!resendResult.ok) {
+        console.error("Resend delivery issue:", resendResult.error);
+        // Automatic fallback: If sending to another domain fails because Resend is in test/sandbox mode,
+        // send directly to the verified owner account email
+        if (
+          resendResult.error?.includes("only send testing emails") &&
+          recipient !== adminOwnerEmail
+        ) {
+          console.log(`Retrying Resend with verified owner email: ${adminOwnerEmail}`);
+          const retry = await sendWithResend(resendApiKey, {
+            from: fromEmail,
+            to: [adminOwnerEmail],
+            subject: emailSubject,
+            html: htmlContent,
+            reply_to: replyTo,
+          });
+
+          if (!retry.ok) {
+            throw new Error(`فشل إرسال الإشعار عبر Resend: ${retry.error}`);
+          }
+          return { success: true };
+        }
+
+        throw new Error(`فشل إرسال الإشعار عبر Resend: ${resendResult.error}`);
+      }
+
+      return { success: true };
+    }
+
+    // 4. Secondary Fallback: SMTP Transporter
+    const host = process.env.SMTP_HOST;
     const port = Number(process.env.SMTP_PORT) || 465;
     const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
 
-    // Graceful simulation fallback if SMTP credentials are not yet configured in local environment
-    if (!user || !pass) {
-      console.log("ℹ️ [Custom Order Received - SMTP Not Configured]:", {
-        clientName,
-        phone,
-        email,
-        projectType,
-        budget,
-        details,
-        preferredTimeline,
-        recipient,
+    if (user && pass) {
+      const transporter = nodemailer.createTransport({
+        host: host || "smtp.resend.com",
+        port,
+        secure: port === 465,
+        auth: {
+          user,
+          pass,
+        },
       });
-      return { success: true, simulated: true };
+
+      await transporter.sendMail({
+        from: `"منصة قالب QALEB" <${user}>`,
+        to: recipient,
+        subject: `🔥 طلب مشروع مخصص جديد من: ${clientName}`,
+        html: htmlContent,
+        replyTo: email !== "غير محدد" ? email : undefined,
+      });
+
+      return { success: true };
     }
 
-    const transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure: port === 465,
-      auth: {
-        user,
-        pass,
-      },
+    // 5. Graceful simulation fallback if no mail credentials exist
+    console.log("ℹ️ [Custom Order Received - Mailer Not Configured]:", {
+      clientName,
+      phone,
+      email,
+      projectType,
+      budget,
+      details,
+      preferredTimeline,
+      recipient,
     });
-
-    await transporter.sendMail({
-      from: `"منصة قالب QALEB" <${user}>`,
-      to: recipient,
-      subject: `🔥 طلب مشروع مخصص جديد من: ${clientName}`,
-      html: htmlContent,
-      replyTo: email !== "غير محدد" ? email : undefined,
-    });
-
-    return { success: true };
+    return { success: true, simulated: true };
   } catch (err: unknown) {
     console.error("Error in submitCustomOrder:", err);
     const msg =
