@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-bg: rgb(9, 13, 22);
+  --brand-surface: rgba(15, 23, 42, 0.6);
+  --brand-accent-1: rgb(16, 185, 129);
+  --brand-accent-2: rgb(0, 245, 160);
+  --brand-text-primary: rgb(255, 255, 255);
+  --brand-text-secondary: rgb(148, 163, 184);
+  --brand-border: rgba(30, 41, 59, 0.8);
+}
+
+html {
+  direction: rtl;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: rgb(9, 13, 22);
+  color: rgb(255, 255, 255);
+  direction: rtl;
+  text-align: right;
+  min-height: 100vh;
+}
+
+/* Custom dark scrollbar using brand accents */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgb(9, 13, 22);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(30, 41, 59, 0.8);
+  border-radius: 9999px;
+  border: 2px solid rgb(9, 13, 22);
+  transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(16, 185, 129);
+}
+
+/* Firefox scrollbar styles */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(30, 41, 59, 0.8) rgb(9, 13, 22);
+}
+
+*:hover {
+  scrollbar-color: rgb(16, 185, 129) rgb(9, 13, 22);
+}
