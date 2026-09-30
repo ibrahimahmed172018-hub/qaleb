@@ -8,3 +8,8 @@ export function getWhatsAppUrl(customMessage: string): string {
 
   return `https://wa.me/${cleanNumber}?text=${encodedText}`;
 }
+
+export const FACEBOOK_URL =
+  process.env.NEXT_PUBLIC_FACEBOOK_URL ||
+  "https://www.facebook.com/share/1C7n3nqren/?mibextid=wwXIfr";
+

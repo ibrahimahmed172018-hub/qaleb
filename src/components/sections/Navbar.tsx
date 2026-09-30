@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ShoppingCart, Menu, X, Sparkles, Layers, MessageCircle } from "lucide-react";
-import { getWhatsAppUrl } from "@/lib/whatsapp";
+import { getWhatsAppUrl, FACEBOOK_URL } from "@/lib/whatsapp";
+import FacebookIcon from "@/components/icons/FacebookIcon";
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -37,8 +39,15 @@ export default function Navbar() {
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand Logo */}
         <Link href="/" className="group flex items-center gap-2.5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-brand-accent-1/30 bg-brand-accent-1/10 text-brand-accent-2 shadow-inner transition-transform group-hover:scale-105">
-            <Layers className="h-5 w-5" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-brand-accent-1/30 bg-brand-accent-1/10 shadow-inner transition-transform group-hover:scale-105 overflow-hidden p-1.5">
+            <Image
+              src="/icon.png"
+              alt="QALEB"
+              width={32}
+              height={32}
+              className="object-contain"
+              priority
+            />
           </div>
           <div className="flex flex-col">
             <span className="text-xl font-extrabold tracking-tight text-white flex items-center gap-1.5">
@@ -66,6 +75,16 @@ export default function Navbar() {
 
         {/* Desktop CTA */}
         <div className="hidden md:flex items-center gap-3">
+          <a
+            href={FACEBOOK_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-400 transition-all hover:bg-blue-500/20 hover:border-blue-500/50 hover:scale-105 active:scale-95"
+            aria-label="صفحتنا على فيسبوك"
+            title="صفحة فيسبوك الرسمية"
+          >
+            <FacebookIcon className="h-4 w-4" />
+          </a>
           <Link
             href="/checkout"
             className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-accent-1 to-emerald-500 px-5 py-2.5 text-xs font-bold text-slate-950 shadow-lg shadow-brand-accent-1/25 transition-all duration-200 hover:brightness-110 active:scale-95"
@@ -101,7 +120,17 @@ export default function Navbar() {
                 {link.label}
               </a>
             ))}
-            <div className="pt-2">
+            <a
+              href={FACEBOOK_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center justify-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 py-3 text-xs font-bold text-blue-400"
+            >
+              <FacebookIcon className="h-4 w-4" />
+              <span>صفحتنا على فيسبوك</span>
+            </a>
+            <div className="pt-1">
               <Link
                 href="/checkout"
                 onClick={() => setMobileMenuOpen(false)}
